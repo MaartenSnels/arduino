@@ -12,14 +12,14 @@ DigiPixel digiPixel(5,2,6,4,3);  // LED Latch/Button Shift !load pin, LED/Button
 
 
 // Program memory arrays
-byte numberTable[30]PROGMEM={0b01111110, 0b01000010, 0b01111110, 0b00100010, 0b01111110, 0b00000010, 0b01001110, 0b01001010, 0b01111010, 0b01000010, 0b01001010, 0b01111110, 0b01111000, 0b00001000, 0b01111110, 0b01111010, 0b01001010, 0b01001110, 0b01111110, 0b01001010, 0b01001110, 0b01000000, 0b01000000, 0b01111110, 0b01111110, 0b01001010, 0b01111110, 0b01111010, 0b01001010, 0b01111110};
+//const byte numberTable[30]PROGMEM={0b01111110, 0b01000010, 0b01111110, 0b00100010, 0b01111110, 0b00000010, 0b01001110, 0b01001010, 0b01111010, 0b01000010, 0b01001010, 0b01111110, 0b01111000, 0b00001000, 0b01111110, 0b01111010, 0b01001010, 0b01001110, 0b01111110, 0b01001010, 0b01001110, 0b01000000, 0b01000000, 0b01111110, 0b01111110, 0b01001010, 0b01111110, 0b01111010, 0b01001010, 0b01111110};
 
 // Variables
-byte hoursMSD = 2;
-byte hoursLSD = 3;
-byte minutesMSD = 5;
-byte minutesLSD = 9;
-byte secondsMSD = 4;
+byte hoursMSD = 0;
+byte hoursLSD = 0;
+byte minutesMSD = 0;
+byte minutesLSD = 0;
+byte secondsMSD = 0;
 byte secondsLSD = 0;
 boolean buttonIsPressed = false;
 long millisOld = 0;
@@ -88,6 +88,6 @@ void saveGraphics(){
   digiPixel.bufferRed[1] = hoursLSD;
   digiPixel.bufferGreen[3] = minutesMSD;
   digiPixel.bufferGreen[4] = minutesLSD;
-  digiPixel.bufferBlue[6] = secondsMSD;
-  digiPixel.bufferBlue[7] = secondsLSD;
+  digiPixel.bufferBlue[6] = secondsLSD + secondsMSD * 32 ;
+  //digiPixel.bufferBlue[7] = secondsLSD + secondsMSD << 4;
 }

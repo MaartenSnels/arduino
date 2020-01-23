@@ -1,50 +1,80 @@
-#include <Keypad.h>
-
+#include <EEPROM.h>
+#include <Time.h>
+#include <TimeLib.h>
 #include <DS3231RTC.h>
-#include <PololuLedStrip.h>
 
 #include <Wire.h>
-#include <Time.h>
-#include "Deklok.h"
 #include "max7219.h"
+#include "time_matrix.h"
+#define DELAY_SHOW_DATE 3000 // aantal ms dat de datum moet blijven staan
+#define DEBUG  true // use Serial
 
 
-// Create an ledStrip object and specify the pin it will use.
-PololuLedStrip<13> strip;
 
-// Create a buffer for holding the colors (3 bytes per color).
-#define LED_COUNT 60
-rgb_color colors[LED_COUNT];
+/////////////////// BEGIN declaratie functies //////////////////////
 
-// const byte secButtonPin = 7;
-// const byte setUurButtonPin = 11;
-// const byte setMinButtonPin = 12;
-// const byte setSecButtonPin = 10;
+/////////////////// EIND declaratie functies //////////////////////
 
-// set keypad
-const byte rows = 4; //four rows
-const byte cols = 4; //four columns
-char keys[rows][cols] = {
-  {'D','C','B', 'A'},
-  {'#','9','6', '3'},
-  {'0','8','5', '2'},
-  {'*','7','4', '1'}
-};
-// aansluiting van matrix van rechts -> links (meest rechts -> 2, meest links -> 9)
-byte rowPins[rows] = {5, 6,  7,  8 }; //connect to the row pinouts of the keypad
-byte colPins[cols] = {9, 10, 11, 12}; //connect to the column pinouts of the keypad
-Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
+////////////////////////////// LET OP //////////////////////////
+////////////////////////////////////////////////////////////////
+////////////////// TEST STAAT UIT I.V.M, atmega 168 ////////////
+////////////////// IN PLAATS VAN DE atmega 328      ////////////
+////////////////////////////////////////////////////////////////
+
+/**
+ * TODO
+ *    - settins kunnen aanpassen in eigen menu
+ *    - date aanpassen in eigen menu
+ *    - brightness HELEMAAL UIT
+ *    - gegeven op eeprom  opslaan
+ *    - verlichting van de knoppen regelen -> button defect
+ *    - temperatuurweergave uit kunnen zetten
+ *        DONE - datum en jaar weergeven
+ *    - alarm instellen
+ *    - uitzetten van seconden zonder dat brightness wordt aangeraakt
+ *        DONE - am/pm
+ *        DONE - temperatuur weergeven
+ *        DONE - seconden weergeven
+ */
+
+#define MODE_NORMAL 0
+#define MODE_SCROLL 1
+
+
+bool writeTime      = false;       // time must be displayt
+byte intensity      = 0x00;        // intencity of led matrix (0-15)
+bool startUp        = true;        // first startup. Display temp or time
+byte oldSec         = 0;           // last second displayed
+byte oldMin         = 0;           // last minute displayed
+byte oldUur         = 0;           // last minute displayed
+bool amPm           = false;       // 12 uurs of 24 uurs notatie
+bool mayShowTemp    = true;        // display temperatuur af en toe
+bool mayShowSeconds = false;       // show seconds
+bool shutDownMode   = false;       // alle leds uit
+byte mode           = MODE_SCROLL; // huidige mode, moet nog uit eeprom komen
+bool runTest        = false;       // tests zijn aan het draaien
+
 
 void setup() {
-//  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.println("Begin");
+ 
+  pinMode(DATA_IN, OUTPUT);
+  pinMode(CLOCK,   OUTPUT);
+  pinMode(LOAD,    OUTPUT);
 
-//  setTijd(21,50,00);
-  
-  pinMode(dataIn, OUTPUT);
-  pinMode(clock,  OUTPUT);
-  pinMode(load,   OUTPUT);
+  //status led uit
+  digitalWrite(13, LOW);
 
-//  digitalWrite(13, HIGH);  
+
+  // knoppen
+  pinMode(BTN_1, INPUT_PULLUP);
+  pinMode(BTN_2, INPUT_PULLUP);
+  pinMode(BTN_1_LED,   OUTPUT);
+  pinMode(BTN_2_LED,   OUTPUT);
+
+// attachInterrupt(digitalPinToInterrupt(BTN_1), handleButtonPressed, FALLING);
+// attachInterrupt(digitalPinToInterrupt(BTN_2), handleButtonPressed, FALLING);
 
 //initiation of the max 7219
   maxAll(max7219_reg_scanLimit, 0x07);      
@@ -54,202 +84,172 @@ void setup() {
   for (int e=1; e<=8; e++) {    // empty registers, turn all LEDs off 
     maxAll(e,0);
   }
-  maxAll(max7219_reg_intensity, 0x00 );    // the first 0x0f is the value you can set
-                                                 // range: 0x00 to 0x0f
-                                                 
-//  for(int i = 0; i< LED_COUNT;  i++) {
-//    colors[i] = (rgb_color) {100,100,100};
-//    strip.write(colors,LED_COUNT);
-//    colors[i] = (rgb_color) {0,0,0};
-//  }
-//  strip.write(colors,LED_COUNT);
+  maxAll(max7219_reg_intensity, intensity );    // the first 0x0f is the value you can set
+                                           // range: 0x00 to 0x0f
+  // test alles, durk op knop laat het stoppen
+//  test();
+  // voorlopig, moeten natuiurlijk uit staan
+  digitalWrite(BTN_1_LED,LOW);
+  digitalWrite(BTN_2_LED,LOW);
+  Serial.println("Einde setup");
 }
 
-void tekenPatroon(byte matrix,  byte patroon[]) {
-  for (int i = 1; i < 9 ; i++ ) {
-    maxOne(matrix, i, patroon[i-1]);
+
+
+void setTijd(tmElements_t *time) {
+  Serial.println("Begin setTijd");
+  RTC.write(*time);
+  writeTime = true;
+  Serial.println("einde setTijd");
+}
+
+/**
+ * Write temp to serial
+ */
+void  debugPrintTemp(float temp) {
+  if (!DEBUG) {
+    return;
   }
+  Serial.print("temp: ");
+  Serial.print(temp);
+  Serial.println(" graden Celcius");
 }
 
-byte LEEG[8]    = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-byte VOL[8]     = {0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
-byte GRADEN[8]  = {0x1E,0x12,0x12,0x1E,0x00,0x00,0x00,0x00};
-byte CELCIUS[8] = {0xFF,0xC0,0xC0,0xC0,0xC0,0xC0,0xC0,0xFF};
-byte CIJFERS[10][8] = {
-  {0xFF,0xC3,0xC3,0xC3,0xC3,0xC3,0xC3,0xFF}, // 0
-  {0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03}, // 1
-  {0xFF,0x03,0x03,0xFF,0xFF,0xC0,0xC0,0xFF}, // 2
-  {0xFF,0x03,0x03,0xFF,0xFF,0x03,0x03,0xFF}, // 3
-  {0xC3,0xC3,0xC3,0xFF,0xFF,0x03,0x03,0x03}, // 4
-  {0xFF,0xC0,0xC0,0xFF,0xFF,0x03,0x03,0xFF}, // 5
-  {0xFF,0xC0,0xC0,0xFF,0xFF,0xC3,0xC3,0xFF}, // 6
-  {0xFF,0x03,0x03,0x03,0x03,0x03,0x03,0x03}, // 7
-  {0xFF,0xC3,0xC3,0xFF,0xFF,0xC3,0xC3,0xFF}, // 8
-  {0xFF,0xC3,0xC3,0xFF,0xFF,0x03,0x03,0xFF}  // 9
-};
-
-void adjustTime() {
-  
-  // loop over de keys, als 4 gehad dan stop
-  int cijfer = 1;
-  char key = keypad.getKey();
-  int uur, minuut, seconde;
-  uur = 0;
-  minuut = 0;
-  seconde =0;
-  while( cijfer <= 4 && key != '#') {
-    if (key != NO_KEY) {
-      // afhankelijk van het veld is er een tijd mogelijk
-      // 1-ste mag alleen 0, 1 of 2
-      // 2-de bij eerste 0 of 1 1-9
-      //      bij eerste 2 0-3
-      //3-de 0-5
-      //4-de 0-9
-      if (cijfer == 4 || cijfer == 2 && uur < 20 ) {
-        switch(key) {
-          case '0' ... '9':
-            if (cijfer == 2) {
-              uur = 10 + (key - '0');
-            }
-            else {
-              minuut = minuut + (key - '0');
-            }
-            cijfer++;
-            break;
-        }
-      }
-      else if (cijfer == 2) {
-        switch(key) {
-          case '0' ... '3':
-              uur = uur + (key - '0');
-              cijfer++;
-              break;
-        }
-      }
-      else if (cijfer == 1) {
-        switch(key) {
-          case '0' ... '2':
-              uur = (key - '0')*10;
-              cijfer++;
-              break;
-        }
-      }
-      else if (cijfer == 3) {
-        switch(key) {
-          case '0' ... '5':
-              minuut = (key - '0')*10;
-              cijfer++;
-              break;
-        }
-      }
-
-    }
-    // vul de boel
-    tekenPatroon(1,CIJFERS[uur / 10]);
-    tekenPatroon(2,CIJFERS[uur % 10]);
-    tekenPatroon(3,CIJFERS[minuut / 10]);
-    tekenPatroon(4,CIJFERS[minuut % 10]);
-    char key = keypad.getKey();
+/**
+ * wirte Timt to serial
+ */
+void debugPrintTime(tmElements_t *time) {
+  if (!DEBUG) {
+    return;
   }
-  // zet tijd
-  
-  if (key != '#' && cijfer == 5) {
-    setTijd(uur, minuut, seconde);
-  }
+  Serial.print("Datum: ");
+  Serial.print(tmYearToCalendar(time->Year));
+  Serial.print("-");
+  Serial.print(time->Month);
+  Serial.print("-");
+  Serial.print(time->Day);
+  Serial.print("\tTijd: ");
+  Serial.print(time->Hour);
+  Serial.print(":");
+  Serial.print(time->Minute);
+  Serial.print(":");
+  Serial.println(time->Second);
 }
 
-void setTijd(int uur, int minuut, int seconde) {
-    tmElements_t tm;
-    tm.Second = seconde;
-    tm.Minute = minuut;
-    tm.Hour   = uur;
-  
-    RTC.write(tm);
-}
-
-void temperatuur() {
+void showTemp() {
   float temp = RTC.getTemp();
-//  Serial.println(temp);
-  tekenPatroon(1,CIJFERS[(byte)temp / 10]);
-  tekenPatroon(2,CIJFERS[(byte)temp % 10]);
-  tekenPatroon(3,GRADEN);
-  tekenPatroon(4,CELCIUS);
+  debugPrintTemp(temp);
+  tekenPatroon(EEN,  CIJFERS[(byte)temp / 10]);
+  tekenPatroon(TWEE, CIJFERS[(byte)temp % 10]);
+  tekenPatroon(DRIE, GRADEN);
+  tekenPatroon(VIER, CELCIUS);
 }
 
-#define TICK 15
-void setTicks() {
-  rgb_color color = (rgb_color){10,10,10};
-  for (int i=0;i<LED_COUNT; i+=TICK) {
-    colors[i] = color;
-  }
+void showDate() {
+  tmElements_t time;
+  RTC.read(time); 
+
+  tekenPatroon(EEN,  CIJFERS[time.Day   / 10]);
+  tekenPatroon(TWEE, CIJFERS[time.Day   % 10]);
+  tekenPatroon(DRIE, CIJFERS[time.Month / 10]);
+  tekenPatroon(VIER, CIJFERS[time.Month % 10]);
+  delay(DELAY_SHOW_DATE);
+  int jaar = tmYearToCalendar(time.Year);
+  tekenPatroon(EEN,  CIJFERS[ jaar / 1000     ]);
+  tekenPatroon(TWEE, CIJFERS[(jaar / 100) % 10]);
+  tekenPatroon(DRIE, CIJFERS[(jaar / 10 ) % 10]);
+  tekenPatroon(VIER, CIJFERS[ jaar % 10       ]);
+  delay(DELAY_SHOW_DATE);
 }
 
-
-#define OFF (rgb_color) {0,0,0}
-void tekenSeconde(char seconde) {
-  int r = 0,g = 1,b = 0;
-  while (r + g + b == 0) {
-    r = random(2);
-    g = random(2);
-    b = random(2);
+void showSec(int oldTime, tmElements_t *time) {
+  if (mode == MODE_SCROLL) {
+    int newTime = time->Minute * 100 + time->Second;
+    draaiVanNaar(oldTime, newTime, 20);
+    return;
   }
-  setTicks();
-  rgb_color color = (rgb_color){100 * r,100 * g,100 * b};
-  colors[seconde] = color;
-  strip.write(colors, LED_COUNT);
-  colors[seconde] = OFF;
+  // normal mode
+  tekenPatroon(EEN,  CIJFERS[time->Minute / 10]);
+  tekenPatroon(TWEE, CIJFERS[time->Minute % 10]);
+  tekenPatroon(DRIE, CIJFERS[time->Second / 10]);
+  tekenPatroon(VIER, CIJFERS[time->Second % 10]);
+}
+
+byte getUur(byte uur) {
+  if (amPm && uur > 12) {
+    uur = uur - 12;
+  }
+  return uur;
+}
+
+void showTime(int oldTime, tmElements_t *time) {
+  byte uur = getUur(time->Hour);
+  
+  if (mode == MODE_SCROLL) {
+    int newTime = uur * 100 + time->Minute;
+    draaiVanNaar(oldTime, newTime, 20);
+    return;
+  }
+  
+  tekenPatroon(EEN,  CIJFERS[uur         / 10]);
+  tekenPatroon(TWEE, CIJFERS[uur          % 10]);
+  tekenPatroon(DRIE, CIJFERS[time->Minute / 10]);
+  tekenPatroon(VIER, CIJFERS[time->Minute % 10]);
   
 }
-
-
-
-char oldSec = 0;
-char oldMin = 0;
-bool writeTime = false;
-
-#define TEMP_START_SEC 10    // seconde waarop de temperatuur moet worden weergegeven
-#define TEMP_STOP_SEC  15    // seconde waarop de normale tijd weer moet worden weergegeven
 
 void loop() {
-  tmElements_t tm;
-  
-//  if ( // digitalRead(setSecButtonPin) == LOW ||
-//       digitalRead(setMinButtonPin) == LOW ||
-//       digitalRead(setUurButtonPin) == LOW ) {
-//
-//      adjustTime();
-//  }
-  if (keypad.getKey() == '#'){
-    adjustTime();
+
+  // kijk of er een knop wordt aangeraakt
+  if (!digitalRead(BTN_1)) {
+    handleButton1Pressed();
   }
-  
-  
-  RTC.read(tm); 
-  char uur = tm.Hour;
-  char minuut = tm.Minute;
-  char seconde = tm.Second;
-  
-//  Serial.print(uur);
-//  Serial.print(":");
-//  Serial.print(minuut);
-//  Serial.print(":");
-//  Serial.println(seconde);
-  
-  if (oldSec != seconde) 
+  if (!digitalRead(BTN_2)) {
+    handleButton2Pressed();
+  }
+
+  tmElements_t time;
+  RTC.read(time); 
+  byte uur     = time.Hour;
+  byte minuut  = time.Minute;
+  byte seconde = time.Second;
+
+  if (oldSec != seconde || writeTime) 
   {
-    oldSec = seconde; 
-    if (seconde >= TEMP_START_SEC && seconde < TEMP_STOP_SEC) {
-      // schrijf de temperatuur, maar doe het maar ff. en daarna weer de
-      // tijd. Herhaal het echet niet te vaak.
-    }
-    // tekenSeconde(seconde);
-    if (oldMin != minuut || writeTime) {
+    debugPrintTime(&time);
+    int oldTimeSec = oldMin*100 + oldSec;
+    int oldTimeMin = getUur(oldUur)*100 + oldMin;
+    
+    
+    if (mayShowSeconds) {
+      // niet netjes, maar het moet meerdere keren. 
+      oldSec = seconde;
       oldMin = minuut;
+      oldUur = uur;
+      showSec(oldTimeSec, &time); 
       writeTime = false;
-      tekenPatroon(1,CIJFERS[uur / 10]);
-      tekenPatroon(2,CIJFERS[uur % 10]);
-      tekenPatroon(3,CIJFERS[minuut / 10]);
-      tekenPatroon(4,CIJFERS[minuut % 10]);
+      return;
+    }
+    oldSec = seconde;
+  
+    // mag temperatuur gezien worden?
+    if (mayShowTemp) {
+      if (!writeTime && (seconde >= TEMP_START_SEC && seconde < TEMP_STOP_SEC)) {
+        // schrijf de temperatuur, maar doe het maar ff. en daarna weer de
+        // tijd. Herhaal het echet niet te vaak.
+        if (seconde == TEMP_START_SEC) {
+          showTemp();
+        }
+        return;
+      }
+    }
+    
+    // laat minuten zien
+    if (oldMin != minuut || writeTime || seconde == TEMP_STOP_SEC) {
+      oldMin = minuut;
+      oldUur = uur;
+      writeTime = false;
+      showTime(oldTimeMin, &time);
     }
   }
   
