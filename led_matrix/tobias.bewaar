@@ -1,0 +1,342 @@
+// voor fonts etc. http://www.gammon.com.au/forum/?id=11516
+byte cijfers[10][8] = {
+  { 0x3E, 0x7F, 0x71, 0x59, 0x4D, 0x7F, 0x3E, 0x00 }, // '0'
+  { 0x40, 0x42, 0x7F, 0x7F, 0x40, 0x40, 0x00, 0x00 }, // '1'
+  { 0x62, 0x73, 0x59, 0x49, 0x6F, 0x66, 0x00, 0x00 }, // '2'
+  { 0x22, 0x63, 0x49, 0x49, 0x7F, 0x36, 0x00, 0x00 }, // '3'
+  { 0x18, 0x1C, 0x16, 0x53, 0x7F, 0x7F, 0x50, 0x00 }, // '4'
+  { 0x27, 0x67, 0x45, 0x45, 0x7D, 0x39, 0x00, 0x00 }, // '5'
+  { 0x3C, 0x7E, 0x4B, 0x49, 0x79, 0x30, 0x00, 0x00 }, // '6'
+  { 0x03, 0x03, 0x71, 0x79, 0x0F, 0x07, 0x00, 0x00 }, // '7'
+  { 0x36, 0x7F, 0x49, 0x49, 0x7F, 0x36, 0x00, 0x00 }, // '8'
+  { 0x06, 0x4F, 0x49, 0x69, 0x3F, 0x1E, 0x00, 0x00 }, // '9'
+};
+
+byte letters[26][8] = {
+  { 0x7C, 0x7E, 0x13, 0x13, 0x7E, 0x7C, 0x00, 0x00 }, // 'A'
+  { 0x41, 0x7F, 0x7F, 0x49, 0x49, 0x7F, 0x36, 0x00 }, // 'B'
+  { 0x1C, 0x3E, 0x63, 0x41, 0x41, 0x63, 0x22, 0x00 }, // 'C'
+  { 0x41, 0x7F, 0x7F, 0x41, 0x63, 0x3E, 0x1C, 0x00 }, // 'D'
+  { 0x41, 0x7F, 0x7F, 0x49, 0x5D, 0x41, 0x63, 0x00 }, // 'E'
+  { 0x41, 0x7F, 0x7F, 0x49, 0x1D, 0x01, 0x03, 0x00 }, // 'F'
+  { 0x1C, 0x3E, 0x63, 0x41, 0x51, 0x73, 0x72, 0x00 }, // 'G'
+  { 0x7F, 0x7F, 0x08, 0x08, 0x7F, 0x7F, 0x00, 0x00 }, // 'H'
+  { 0x00, 0x41, 0x7F, 0x7F, 0x41, 0x00, 0x00, 0x00 }, // 'I'
+  { 0x30, 0x70, 0x40, 0x41, 0x7F, 0x3F, 0x01, 0x00 }, // 'J'
+  { 0x41, 0x7F, 0x7F, 0x08, 0x1C, 0x77, 0x63, 0x00 }, // 'K'
+  { 0x41, 0x7F, 0x7F, 0x41, 0x40, 0x60, 0x70, 0x00 }, // 'L'
+  { 0x7F, 0x7F, 0x0E, 0x1C, 0x0E, 0x7F, 0x7F, 0x00 }, // 'M'
+  { 0x7F, 0x7F, 0x06, 0x0C, 0x18, 0x7F, 0x7F, 0x00 }, // 'N'
+  { 0x1C, 0x3E, 0x63, 0x41, 0x63, 0x3E, 0x1C, 0x00 }, // 'O'
+  { 0x41, 0x7F, 0x7F, 0x49, 0x09, 0x0F, 0x06, 0x00 }, // 'P'
+  { 0x1E, 0x3F, 0x21, 0x71, 0x7F, 0x5E, 0x00, 0x00 }, // 'Q'
+  { 0x41, 0x7F, 0x7F, 0x09, 0x19, 0x7F, 0x66, 0x00 }, // 'R'
+  { 0x26, 0x6F, 0x4D, 0x59, 0x73, 0x32, 0x00, 0x00 }, // 'S'
+  { 0x03, 0x41, 0x7F, 0x7F, 0x41, 0x03, 0x00, 0x00 }, // 'T'
+  { 0x7F, 0x7F, 0x40, 0x40, 0x7F, 0x7F, 0x00, 0x00 }, // 'U'
+  { 0x1F, 0x3F, 0x60, 0x60, 0x3F, 0x1F, 0x00, 0x00 }, // 'V'
+  { 0x7F, 0x7F, 0x30, 0x18, 0x30, 0x7F, 0x7F, 0x00 }, // 'W'
+  { 0x43, 0x67, 0x3C, 0x18, 0x3C, 0x67, 0x43, 0x00 }, // 'X'
+  { 0x07, 0x4F, 0x78, 0x78, 0x4F, 0x07, 0x00, 0x00 }, // 'Y'
+  { 0x47, 0x63, 0x71, 0x59, 0x4D, 0x67, 0x73, 0x00 }, // 'Z'
+};
+
+
+
+void vierkant8(byte scherm) {
+    maxOne(scherm, 1, B11111111);
+    maxOne(scherm, 2, B10000001);
+    maxOne(scherm, 3, B10000001);
+    maxOne(scherm, 4, B10000001);
+    maxOne(scherm, 5, B10000001);
+    maxOne(scherm, 6, B10000001);
+    maxOne(scherm, 7, B10000001);
+    maxOne(scherm, 8, B11111111);
+}
+
+void vierkant6(byte scherm) {
+    maxOne(scherm, 1,0);
+    maxOne(scherm, 2,126);
+    maxOne(scherm, 3,66);
+    maxOne(scherm, 4,66);
+    maxOne(scherm, 5,66);
+    maxOne(scherm, 6,66);
+    maxOne(scherm, 7,126);
+    maxOne(scherm, 8,0);
+}
+
+void vierkant4(byte scherm) {
+    maxOne(scherm, 1,0);
+    maxOne(scherm, 2,0);
+    maxOne(scherm, 3,60);
+    maxOne(scherm, 4,36);
+    maxOne(scherm, 5,36);
+    maxOne(scherm, 6,60);
+    maxOne(scherm, 7,0);
+    maxOne(scherm, 8,0);
+}
+void vierkant2(byte scherm) {
+    maxOne(scherm, 1,0);
+    maxOne(scherm, 2,0);
+    maxOne(scherm, 3,0);
+    maxOne(scherm, 4,24);
+    maxOne(scherm, 5,24);
+    maxOne(scherm, 6,0);
+    maxOne(scherm, 7,0);
+    maxOne(scherm, 8,0);
+}
+void smileyBlij(int scherm){
+  maxOne(scherm, 8, B11111111);
+  maxOne(scherm, 7, B10000001);
+  maxOne(scherm, 6, B10100101);
+  maxOne(scherm, 5, B10000001);
+  maxOne(scherm, 4, B10100101);
+  maxOne(scherm, 3, B10011001);
+  maxOne(scherm, 2, B10000001);
+  maxOne(scherm, 1, B11111111);
+}
+void smileyNormaal(int scherm){
+  maxOne(scherm, 8,  B11111111);
+  maxOne(scherm, 7,  B10000001);
+  maxOne(scherm, 6,  B10100101);
+  maxOne(scherm, 5,  B10000001);
+  maxOne(scherm, 4,  B10111101);
+  maxOne(scherm, 3,  B10000001);
+  maxOne(scherm, 2,  B10000001);
+  maxOne(scherm, 1,  B11111111);
+}
+void smileyBoos(int scherm){
+  maxOne(scherm, 8, B11111111);
+  maxOne(scherm, 7, B10000001);
+  maxOne(scherm, 6, B10100101);
+  maxOne(scherm, 5, B10000001);
+  maxOne(scherm, 4, B10011001);
+  maxOne(scherm, 3, B10100101);
+  maxOne(scherm, 2, B10000001);
+  maxOne(scherm, 1, B11111111);
+}
+
+  void engelseVlag(){
+    maxSingle(8, B11111111);
+    maxSingle(7, B11011011);
+    maxSingle(6, B10111101);
+    maxSingle(5, B11111111);
+    maxSingle(4, B11111111);
+    maxSingle(3, B10111101);
+    maxSingle(2, B11011011);
+    maxSingle(1, B11111111);
+  }  
+
+  void cijfer0(byte scherm) {
+    maxOne(scherm, 8, B11111111);
+    maxOne(scherm, 7, B11111111);
+    maxOne(scherm, 6, B11000011);
+    maxOne(scherm, 5, B11000011);
+    maxOne(scherm, 4, B11000011);
+    maxOne(scherm, 3, B11000011);
+    maxOne(scherm, 2, B11111111);
+    maxOne(scherm, 1, B11111111);
+  }
+  
+  void cijfer(byte scherm, byte nr) {
+    byte i = 0;
+    while (i < 8) {
+      maxOne(scherm, i, cijfers[nr][i]);
+      i++;
+    }
+  }
+  
+  void hoofdletter(byte scherm, char hoofdletter) {
+    byte i = 0;
+    while (i < 8) {
+      maxOne(scherm, i, letters[hoofdletter - 'A'][i]);
+      i++;
+    }
+  }
+
+  void letterT(int scherm) {
+    maxOne(scherm, 8, B11111111);
+    maxOne(scherm, 7, B11111111);
+    maxOne(scherm, 6, B00011000);
+    maxOne(scherm, 5, B00011000);
+    maxOne(scherm, 4, B00011000);
+    maxOne(scherm, 3, B00011000);
+    maxOne(scherm, 2, B00011000);
+    maxOne(scherm, 1, B00011000);
+  }
+  void letterO(int scherm) {
+    maxOne(scherm, 8, B11111111);
+    maxOne(scherm, 7, B11111111);
+    maxOne(scherm, 6, B11000011);
+    maxOne(scherm, 5, B11000011);
+    maxOne(scherm, 4, B11000011);
+    maxOne(scherm, 3, B11000011);
+    maxOne(scherm, 2, B11111111);
+    maxOne(scherm, 1, B11111111);
+  }
+  void letterB(int scherm) {
+    maxOne(scherm, 8, B11000000);
+    maxOne(scherm, 7, B11000000);
+    maxOne(scherm, 6, B11000000);
+    maxOne(scherm, 5, B11111111);
+    maxOne(scherm, 4, B11111111);
+    maxOne(scherm, 3, B11000011);
+    maxOne(scherm, 2, B11000011);
+    maxOne(scherm, 1, B11111111);
+  }
+  void letterI(int scherm) {
+    maxOne(scherm, 8, B00011000);
+    maxOne(scherm, 7, B00011000);
+    maxOne(scherm, 6, B00000000);
+    maxOne(scherm, 5, B00011000);
+    maxOne(scherm, 4, B00011000);
+    maxOne(scherm, 3, B00011000);
+    maxOne(scherm, 2, B00011000);
+    maxOne(scherm, 1, B00011000);
+  }
+  void letterA(int scherm) {
+    maxOne(scherm, 8, B11111111);
+    maxOne(scherm, 7, B11111111);
+    maxOne(scherm, 6, B11000011);
+    maxOne(scherm, 5, B11000011);
+    maxOne(scherm, 4, B11111111);
+    maxOne(scherm, 3, B11111111);
+    maxOne(scherm, 2, B11000011);
+    maxOne(scherm, 1, B11000011);
+  }
+  void letterS(int scherm) {
+    maxOne(scherm, 8, B11111111);
+    maxOne(scherm, 7, B11000000);
+    maxOne(scherm, 6, B11000000);
+    maxOne(scherm, 5, B11111111);
+    maxOne(scherm, 4, B11111111);
+    maxOne(scherm, 3, B00000011);
+    maxOne(scherm, 2, B00000011);
+    maxOne(scherm, 1, B11111111);
+  }
+
+ loop {
+ 
+ // over alle displays, alle cijfers ff aan 
+// byte k = 1;
+// while (k <= maxInUse) {
+// byte i = 1;
+//  while (i <= 8) {
+//   int j = 1;
+//     while (j <= 256) {
+//       maxOne(k, i, j);
+//       j = j * 2;
+//       delay(20);  // voor één display wordt dat delay*64 ms per planke, bij 15 is dat 1 secone
+//     }
+//     maxOne(k, i, 0);
+//     ++i;
+//   }
+//   k++;
+// }
+
+// laat cijfers 0 tot 100 zien
+// byte i = 0;
+//  while (i < 10) {
+//   byte j = 0;
+//     while (j < 10) {
+//       cijfer(2,i);
+//       cijfer(1,j);
+//       delay(1000);
+//       j++;
+//     }
+//     i++;
+//   }
+
+// aan uit, knipper om en om
+//allesAanUit(1, true);
+//allesAanUit(2, false);
+//delay(100);
+//allesAanUit(1, false);
+//allesAanUit(2, true);
+//delay(100);
+ 
+// int wacht = 100;
+// hoofdletter(2,'M');
+// hoofdletter(1,'S');
+// byte intensity = 0;
+//// while (intensity < 16) {
+////   maxAll(max7219_reg_intensity, intensity );    // the first 0x0f is the value you can set
+////   intensity++;
+////   delay(wacht);
+//// }
+// intensity = 15;
+// while (intensity >= 0) {
+//   maxAll(max7219_reg_intensity, intensity );    // the first 0x0f is the value you can set
+//   intensity--;
+//   delay(wacht);
+// }
+// 
+
+//  int wacht = 500;
+//
+//  smileyNormaal(2);
+//  letterT(1);
+//  delay(wacht);
+//  smileyBlij(2);
+//  letterO(1);
+//  delay(wacht);
+//  smileyNormaal(2);
+//  letterB(1);
+//  delay(wacht);
+//  smileyBlij(2);
+//  letterI(1);
+//  delay(wacht);
+//  smileyNormaal(2);
+//  letterA(1);
+//  delay(wacht);
+//  smileyBlij(2);
+//  letterS(1);
+//  delay(wacht);
+//  
+//  // tweede keer nu anders om
+//  smileyNormaal(1);
+//  letterT(2);
+//  delay(wacht);
+//  smileyBlij(1);
+//  letterO(2);
+//  delay(wacht);
+//  smileyNormaal(1);
+//  letterB(2);
+//  delay(wacht);
+//  smileyBlij(1);
+//  letterI(2);
+//  delay(wacht);
+//  smileyNormaal(1);
+//  letterA(2);
+//  delay(wacht);
+//  smileyBlij(1);
+//  letterS(2);
+//  delay(wacht);
+//  
+//
+//  //scrollende tobias
+//  letterT(1);
+//  allesUit(2);
+//  delay(wacht);
+//  letterO(1);
+//  letterT(2);
+//  delay(wacht);
+//  letterB(1);
+//  letterO(2);
+//  delay(wacht);
+//  letterI(1);
+//  letterB(2);
+//  delay(wacht);
+//  letterA(1);
+//  letterI(2);
+//  delay(wacht);
+//  letterS(1);
+//  letterA(2);
+//  delay(wacht);
+//  allesUit(1);
+//  letterS(2);
+//  delay(wacht);
+//  
+
+ } 
+  
